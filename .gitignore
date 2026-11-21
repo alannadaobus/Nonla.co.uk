@@ -1,0 +1,17 @@
+# ---- OS / editors ----
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.idea/
+.vs/
+.vscode/
+*.code-workspace
+
+# ---- .NET tool projects (Tools/) ----
+Tools/**/bin/
+Tools/**/obj/
+TestResults/
+
+# The Unity project has its own rules in DanhCuVietnam/.gitignore

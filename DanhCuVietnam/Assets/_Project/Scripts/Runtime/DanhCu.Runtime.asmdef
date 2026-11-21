@@ -1,0 +1,19 @@
+{
+    "name": "DanhCu.Runtime",
+    "rootNamespace": "DanhCu.Runtime",
+    "references": [
+        "DanhCu.Core",
+        "DanhCu.Data",
+        "DanhCu.Input",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

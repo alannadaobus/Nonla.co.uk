@@ -1,0 +1,28 @@
+name: Core tests
+
+# Builds and tests the engine-free DanhCu.Core assembly without Unity.
+on:
+  push:
+    paths:
+      - "DanhCuVietnam/Assets/_Project/Scripts/Core/**"
+      - "DanhCuVietnam/Assets/_Project/Tests/EditMode/Core/**"
+      - "Tools/CoreTests/**"
+      - ".github/workflows/core-tests.yml"
+  pull_request:
+    paths:
+      - "DanhCuVietnam/Assets/_Project/Scripts/Core/**"
+      - "DanhCuVietnam/Assets/_Project/Tests/EditMode/Core/**"
+      - "Tools/CoreTests/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Test
+        run: dotnet test Tools/CoreTests/Tests/DanhCu.Core.Tests.csproj --nologo
