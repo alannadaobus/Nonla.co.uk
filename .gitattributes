@@ -88,3 +88,6 @@
 # Baked lighting / terrain
 LightingData.asset filter=lfs diff=lfs merge=lfs -text
 *.raw   filter=lfs diff=lfs merge=lfs -text
+
+# Documentation screenshots are small and should be viewable on GitHub without LFS.
+Docs/**/*.png -filter -diff -merge binary

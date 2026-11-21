@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DanhCu.Core.Tops;
 using UnityEngine;
 
 namespace DanhCu.Data
@@ -16,8 +17,10 @@ namespace DanhCu.Data
     }
 
     /// <summary>
-    /// A playable spinning top (con cù). Geometry is authored in metres and kilograms;
-    /// derived inertia uses the solid-cone approximation from Docs/PHYSICS_SPEC.md §3.2.
+    /// A playable spinning top (con cù): which shape (<see cref="TopData"/>) it is turned in,
+    /// which wood (<see cref="TopMaterialDefinition"/>) it is made of, and its gameplay values.
+    /// Mass, centre of mass and inertia are integrated from shape + wood + metal tip
+    /// (PHYSICS_SPEC §3); they are never authored by hand.
     /// </summary>
     [CreateAssetMenu(menuName = "Danh Cu/Top", fileName = "Top_")]
     public sealed class TopDefinition : DefinitionAsset
@@ -30,51 +33,47 @@ namespace DanhCu.Data
         [SerializeField] private LocalizedText description;
 
         [Header("Construction")]
+        [SerializeField] private TopData shape;
         [SerializeField] private TopMaterialDefinition material;
+
+        [Tooltip("UI / gameplay label. The tip geometry itself comes from the TopData.")]
         [SerializeField] private TipType tipType = TipType.IronNail;
-
-        [Header("Geometry (SI)")]
-        [Tooltip("Total mass in kg, including the iron tip.")]
-        [Range(0.05f, 0.6f)] [SerializeField] private float mass = 0.18f;
-
-        [Tooltip("Widest body radius in metres.")]
-        [Range(0.015f, 0.08f)] [SerializeField] private float bodyRadius = 0.035f;
-
-        [Tooltip("Height from tip to crown in metres.")]
-        [Range(0.03f, 0.15f)] [SerializeField] private float height = 0.075f;
-
-        [Tooltip("Centre of mass height above the tip, as a fraction of height.")]
-        [Range(0.2f, 0.8f)] [SerializeField] private float centerOfMassRatio = 0.55f;
-
-        [Tooltip("Contact radius of the tip in metres.")]
-        [Range(0.0005f, 0.01f)] [SerializeField] private float tipRadius = 0.0015f;
 
         [Header("Launch")]
         [Tooltip("Maximum spin a perfect throw can impart, in revolutions per minute.")]
-        [Range(300f, 4000f)] [SerializeField] private float maxLaunchRpm = 2200f;
+        [Range(300f, 4000f)] [SerializeField] private float maxLaunchRpm = 2800f;
 
         [Tooltip("Rope wraps around the body; more wraps = more spin but slower wind-up.")]
         [Range(3, 12)] [SerializeField] private int ropeWraps = 7;
 
         [Header("Presentation")]
+        [Tooltip("Normally Prefabs/Tops/TopModel.prefab; its TopModelController is configured from this definition at spawn.")]
         [SerializeField] private GameObject prefab;
         [SerializeField] private Sprite icon;
 
         public LocalizedText Description => description;
 
+        public TopData Shape => shape;
+
         public TopMaterialDefinition Material => material;
 
         public TipType TipType => tipType;
 
-        public float Mass => mass;
+        /// <summary>Integrated mass properties (shape + wood + metal); default (all zero) without a valid shape.</summary>
+        public TopMassProperties MassProperties =>
+            shape != null && shape.IsShapeValid
+                ? shape.GetMassProperties(material != null ? material.Density : TopData.FallbackWoodDensity)
+                : default;
 
-        public float BodyRadius => bodyRadius;
+        public float Mass => (float)MassProperties.Mass;
 
-        public float Height => height;
+        public float BodyRadius => shape != null ? shape.BodyDiameter * 0.5f : 0f;
 
-        public float CenterOfMassHeight => height * centerOfMassRatio;
+        public float Height => shape != null ? shape.TotalHeight : 0f;
 
-        public float TipRadius => tipRadius;
+        public float CenterOfMassHeight => (float)MassProperties.CenterOfMassHeight;
+
+        public float TipRadius => shape != null ? shape.TipPointRadius : 0f;
 
         public float MaxLaunchRpm => maxLaunchRpm;
 
@@ -87,42 +86,26 @@ namespace DanhCu.Data
 
         public Sprite Icon => icon;
 
-        /// <summary>Moment of inertia about the spin axis (kg·m²): solid cone, I₃ = 3/10·m·r².</summary>
-        public float AxialInertia => 0.3f * mass * bodyRadius * bodyRadius;
+        /// <summary>I₃: moment of inertia about the spin axis (kg·m²).</summary>
+        public float AxialInertia => (float)MassProperties.AxialInertia;
 
-        /// <summary>
-        /// Moment of inertia about a horizontal axis through the tip (kg·m²): cone about its
-        /// centre of mass, 3/20·m·(r² + h²/4), moved to the tip by the parallel-axis term m·l².
-        /// </summary>
-        public float TransverseInertiaAtTip
-        {
-            get
-            {
-                float l = CenterOfMassHeight;
-                return (0.15f * mass * ((bodyRadius * bodyRadius) + (0.25f * height * height))) + (mass * l * l);
-            }
-        }
+        /// <summary>I₁: moment of inertia about a horizontal axis through the tip (kg·m²).</summary>
+        public float TransverseInertiaAtTip => (float)MassProperties.TransverseInertiaAtPivot;
 
         /// <summary>
         /// Minimum spin (rad/s) for the top to stand upright ("sleep"):
         /// ω_crit = 2·√(m·g·l·I₁) / I₃. See PHYSICS_SPEC.md §4.2.
         /// </summary>
-        public float CriticalAngularSpeed(float gravity)
-        {
-            float torque = mass * Mathf.Abs(gravity) * CenterOfMassHeight;
-            return 2f * Mathf.Sqrt(torque * TransverseInertiaAtTip) / AxialInertia;
-        }
+        public float CriticalAngularSpeed(float gravity) => (float)MassProperties.CriticalAngularSpeed(gravity);
 
         public override void Validate(List<string> errors)
         {
             base.Validate(errors);
             Require(material != null, errors, "material is not assigned.");
-            Require(mass > 0f, errors, "mass must be positive.");
-            Require(bodyRadius > tipRadius, errors, "bodyRadius must be larger than tipRadius.");
-            Require(height > bodyRadius * 0.5f, errors, "height is implausibly small for the body radius.");
+            Require(shape != null, errors, "shape (TopData) is not assigned.");
             Require(maxLaunchRpm > 0f, errors, "maxLaunchRpm must be positive.");
 
-            if (mass > 0f && bodyRadius > 0f)
+            if (shape != null && shape.IsShapeValid)
             {
                 float critical = CriticalAngularSpeed(StandardGravity);
                 Require(MaxLaunchAngularSpeed >= critical * MinStabilityHeadroom, errors,
@@ -133,19 +116,17 @@ namespace DanhCu.Data
         internal void Configure(
             TopMaterialDefinition newMaterial,
             TipType newTipType,
-            float newMass,
-            float newBodyRadius,
-            float newHeight,
+            TopData newShape,
             float newMaxLaunchRpm,
-            LocalizedText newDescription)
+            LocalizedText newDescription,
+            GameObject newPrefab = null)
         {
             material = newMaterial;
             tipType = newTipType;
-            mass = newMass;
-            bodyRadius = newBodyRadius;
-            height = newHeight;
+            shape = newShape;
             maxLaunchRpm = newMaxLaunchRpm;
             description = newDescription;
+            prefab = newPrefab;
         }
     }
 }

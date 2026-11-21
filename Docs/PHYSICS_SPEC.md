@@ -34,35 +34,48 @@ small. The decision is final at the end of the Phase 1 spike against §9.
 
 ## 3. Body model
 
-### 3.1 Parameters (per top, from `TopDefinition`)
+### 3.1 Parameters
 
-| Symbol | Field | Default (cù gỗ ổi) |
+A top = **shape** (`TopData`: every dimension of body, tip and rope zone, plus
+metal density) + **wood** (`TopMaterialDefinition`: density ρ_w, restitution e,
+body friction μ_b) + gameplay values on `TopDefinition`. Geometry, prototype
+dimensions (assumptions, not historical data) and screenshots: [TOP_MODEL.md](TOP_MODEL.md).
+
+| Symbol | Source | Medium · gỗ ổi |
 |---|---|---|
-| m | `mass` | 0.18 kg |
-| r | `bodyRadius` | 0.035 m |
-| h | `height` | 0.075 m |
-| l = h · `centerOfMassRatio` | CoM height above tip | 0.041 m |
-| r_t | `tipRadius` | 0.0015 m |
-| ω_max | `maxLaunchRpm` | 2200 RPM (230 rad/s) |
-| ρ, e, μ_b | material density, restitution, body friction | 900 kg/m³, 0.45, 0.35 |
+| H, D = 2R | `TopData.totalHeight`, `bodyDiameter` | 75 mm, 55 mm |
+| ρ (tip point radius) | `TopData.tipPointRadius` | 0.8 mm |
+| ρ_w, ρ_m | wood density, `TopData.metalDensity` | 900, 7850 kg/m³ |
+| m | **integrated** (§3.2) | 90.3 g |
+| l | **integrated** CoM height above the pivot | 45.7 mm |
+| ω_max | `TopDefinition.maxLaunchRpm` | 2800 RPM (293 rad/s) |
 
-### 3.2 Inertia (solid-cone approximation)
+### 3.2 Mass properties (integrated from the geometry)
 
-* Axial: `I₃ = 3/10 · m · r²`
-* Transverse about the tip (parallel axis): `I₁ = 3/20 · m · (r² + h²/4) + m · l²`
+The top is a solid of revolution about +Y with outer wood radius r_w(y) and a
+metal core r_m(y) (point, taper, shank and embedded shank). Thin slices give
 
-Implemented in `TopDefinition.AxialInertia` / `TransverseInertiaAtTip`.
-Real *con cù* bodies are bulbous (mass further out), so true I₃ is likely
-10–30 % higher. Phase 1 calibration: weigh and measure 5 real tops, use
-the bifilar pendulum method for I₃, and add an override field if needed.
+```
+dm  = π[ρ_m r_m² + ρ_w (r_w² − r_m²)] dy
+dI₃ = π/2 [ρ_m r_m⁴ + ρ_w (r_w⁴ − r_m⁴)] dy
+I₁(pivot) = ∫ (dI₃/2 + y² dm),   l = ∫ y dm / m,   I₁(CoM) = I₁(pivot) − m·l²
+```
+
+integrated with composite 3-point Gauss–Legendre quadrature, split at every
+profile kink (`RevolvedMassIntegrator`; verified against the closed-form cylinder
+and cone). This replaces the earlier solid-cone approximation. The Rigidbody gets
+`mass`, `centerOfMass = (0, l, 0)` and `inertiaTensor = (I₁(CoM), I₃, I₁(CoM))`.
 
 Default tops (computed):
 
-| Top | I₃ (kg·m²) | I₁ (kg·m²) | ω_crit (rad/s) | ω_max / ω_crit |
-|---|---|---|---|---|
-| Cù gỗ ổi | 6.6e-5 | 3.8e-4 | 159 (1514 RPM) | 1.45 |
-| Cù gỗ sến | 1.0e-4 | 5.7e-4 | 148 (1417 RPM) | 1.34 |
-| Cù gỗ mít | 4.3e-5 | 2.4e-4 | 161 (1537 RPM) | 1.69 |
+| Top | Shape | m | l | I₃ (kg·m²) | I₁ pivot (kg·m²) | ω_crit (rad/s) | ω_max / ω_crit |
+|---|---|---|---|---|---|---|---|
+| Cù gỗ mít | Small | 32.6 g | 36.3 mm | 6.2e-6 | 5.1e-5 | 247 (2362 RPM) | 1.27 |
+| Cù gỗ ổi | Medium | 90.3 g | 45.7 mm | 2.6e-5 | 2.2e-4 | 229 (2183 RPM) | 1.28 |
+| Cù gỗ sến | Large | 181.8 g | 54.9 mm | 7.6e-5 | 6.4e-4 | 208 (1983 RPM) | 1.31 |
+
+Phase 1 calibration: measure real tops (mass, CoM by balancing, I₃ by bifilar
+pendulum) and adjust the TopData dimensions until the integrated values match.
 
 ## 4. Dynamics
 
@@ -95,7 +108,7 @@ A top on a fixed pivot is stable upright when
 I₃² · ω₃² > 4 · I₁ · m · g · l      ⇔      ω₃ > ω_crit = 2·√(I₁·m·g·l) / I₃
 ```
 
-Implemented as `TopDefinition.CriticalAngularSpeed(g)`. Data validation
+Implemented as `TopMassProperties.CriticalAngularSpeed(g)` (exposed on `TopDefinition`). Data validation
 requires `ω_max ≥ 1.2 · ω_crit`, otherwise a perfect throw could never stand
 up. `PhysicsTuningProfile.criticalSpinMultiplier` scales ω_crit for feel.
 
@@ -124,8 +137,8 @@ Linear air drag on translation is negligible and omitted.
 
 ### 4.5 Falling and stopping
 
-* The top **falls** when the body rim touches the ground (θ ≥ θ_rim =
-  atan(r / l) ≈ 40° for the default top). It then rolls on its side under
+* The top **falls** when the body touches the ground (θ ≥ θ_rim, the
+  tilt at which the outline first reaches the ground: θ_rim = min atan(y / r(y)) over the profile; ≈ 54° for all three prototype shapes). It then rolls on its side under
   PhysX-style rigid contact until at rest.
 * The top counts as **stopped** for rules when it has fallen *or*
   `|ω₃| < stoppedSpinThreshold` (default 8 rad/s).
@@ -134,7 +147,7 @@ Linear air drag on translation is negligible and omitted.
 
 ### 5.1 Top–top
 
-* Proxy shape: cone + spherical cap for the body, sphere for the tip.
+* Proxy shape: the convex hull of the body outline plus the tip sphere (TOP_MODEL §1 Colliders).
 * Normal impulse with restitution `e = √(e₁ · e₂)` of the two materials.
 * Tangential impulse from relative surface velocity including spin
   (`v_rel = v₁ + ω₁ × r₁ − v₂ − ω₂ × r₂`), capped by Coulomb `μ_b · J_n`.
@@ -204,7 +217,7 @@ AI uses the same model with error drawn from `AIDifficultyProfile`.
 
 | # | Criterion | Measure |
 |---|---|---|
-| P1 | Spin duration | Default top at ω_max on packed earth spins 40–90 s before falling (real tops: ~1 min) |
+| P1 | Spin duration | Medium gỗ ổi top at ω_max on packed earth spins 40–90 s before falling (real tops: ~1 min) |
 | P2 | Precession direction & rate | Same sense as spin; within 15 % of `m·g·l/(I₃·ω₃)` for θ = 10°, ω₃ = 200 rad/s |
 | P3 | Sleeping | Thrown at 10° tilt with ω₃ > 1.3 ω_crit, tilt decreases below 3° within 3 s |
 | P4 | Death spiral | Below ω_crit, tilt grows monotonically and the top falls within 10 s |

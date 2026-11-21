@@ -12,6 +12,7 @@ behaviour, architecture or data fields change.
 | `DanhCuVietnam/Assets/_Project/` | **All** first-party game content and code |
 | `Docs/` | SRS, GDD, TECHNICAL_DESIGN, PHYSICS_SPEC, TEST_PLAN |
 | `Tools/CoreTests/` | .NET projects that compile and test `DanhCu.Core` without Unity |
+| `Tools/TopModelExport/` | Exports the procedural top geometry to OBJ/JSON (`dotnet run --project Tools/TopModelExport -- out/`) |
 | `README.md` | Repository is shared with the Nonla website; leave website content alone |
 
 ## Commands
@@ -28,7 +29,7 @@ Unity -batchmode -projectPath DanhCuVietnam -runTests -testPlatform PlayMode
 Unity -batchmode -quit -projectPath DanhCuVietnam -executeMethod DanhCu.Editor.ProjectSetup.RunBatch
 ```
 
-Editor menus: **Danh Cu → Setup → Run Project Setup** / **Validate Data**.
+Editor menus: **Danh Cu → Setup → Run Project Setup** / **Validate Data**; **Danh Cu → Tops → Rebake All Top Meshes** / **Rebuild TopModel Prefab**.
 
 ## Architecture rules (see Docs/TECHNICAL_DESIGN.md)
 
@@ -52,6 +53,9 @@ Editor menus: **Danh Cu → Setup → Run Project Setup** / **Validate Data**.
 9. Every definition implements `IValidatable`; add validation for every new field with constraints.
 10. **Physics is SI units** and every tunable maps to a symbol in
     PHYSICS_SPEC.md. Change the spec and the field together.
+    Top mass, centre of mass and inertia are **integrated from `TopData`
+    geometry** — never author them by hand. Top dimensions are documented
+    prototype assumptions (Docs/TOP_MODEL.md §2) until replaced by measurements.
 11. **Same throw model for player, AI and network.** AI may not read or set
     simulation state it could not observe.
 12. Web-safe code: no threads in gameplay, no synchronous loads, no new

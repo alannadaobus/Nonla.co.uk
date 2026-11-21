@@ -6,7 +6,8 @@
         "UnityEditor.TestRunner",
         "DanhCu.Core",
         "DanhCu.Data",
-        "DanhCu.Editor"
+        "DanhCu.Editor",
+        "DanhCu.Tops"
     ],
     "includePlatforms": [
         "Editor"

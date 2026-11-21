@@ -7,12 +7,14 @@ on:
       - "DanhCuVietnam/Assets/_Project/Scripts/Core/**"
       - "DanhCuVietnam/Assets/_Project/Tests/EditMode/Core/**"
       - "Tools/CoreTests/**"
+      - "Tools/TopModelExport/**"
       - ".github/workflows/core-tests.yml"
   pull_request:
     paths:
       - "DanhCuVietnam/Assets/_Project/Scripts/Core/**"
       - "DanhCuVietnam/Assets/_Project/Tests/EditMode/Core/**"
       - "Tools/CoreTests/**"
+      - "Tools/TopModelExport/**"
 
 jobs:
   test:
@@ -26,3 +28,5 @@ jobs:
           dotnet-version: "8.0.x"
       - name: Test
         run: dotnet test Tools/CoreTests/Tests/DanhCu.Core.Tests.csproj --nologo
+      - name: Export top geometry
+        run: dotnet run --project Tools/TopModelExport -- top_model_export

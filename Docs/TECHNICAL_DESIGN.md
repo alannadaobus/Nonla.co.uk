@@ -95,11 +95,12 @@ reference is a compile error, not a code-review comment.
 
 | Assembly | Status | Engine refs | References | Purpose |
 |---|---|---|---|---|
-| `DanhCu.Core` | ✅ | **none** (`noEngineReferences`) | — | Generic FSM, game-flow FSM + transition table, `EventBus`, `ServiceRegistry`, match model (`MatchSettings`, `GameSession`, `MatchResult`, `GameModeRules`), `Log` facade |
+| `DanhCu.Core` | ✅ | **none** (`noEngineReferences`) | — | Generic FSM, game-flow FSM + transition table, `EventBus`, `ServiceRegistry`, match model (`MatchSettings`, `GameSession`, `MatchResult`, `GameModeRules`), `Log` facade, **top geometry** (`Core.Tops`: shape parameters/presets, analytic profile, lathe mesh builder, mass-property integrator) |
 | `DanhCu.Data` | ✅ | UnityEngine, Input System | Core | ScriptableObject definitions and validation |
 | `DanhCu.Input` | ✅ | UnityEngine, Input System | Core | `PlayerInputReader`, action name constants |
 | `DanhCu.Runtime` | ✅ | UnityEngine | Core, Data, Input | `GameManager`, concrete game states, `SceneLoader`, `GameBootstrapper`, engine settings |
-| `DanhCu.Editor` | ✅ | UnityEditor, URP, uGUI | all above | Idempotent project setup, default content, data validation menu |
+| `DanhCu.Tops` | ✅ | UnityEngine | Core, Data | `TopModelController` (meshes, materials, colliders, Rigidbody mass properties of a top model), `TopMeshUtility` |
+| `DanhCu.Editor` | ✅ | UnityEditor, URP, uGUI | all above | Idempotent project setup, default content, top mesh baking + TopModel prefab, TopData inspector, data validation menu |
 | `DanhCu.Tests.EditMode` | ✅ | Test Runner | Core, Data, Editor | Unit + data tests |
 | `DanhCu.Tests.PlayMode` | ✅ | Test Runner | Core, Data, Runtime | Flow smoke tests |
 | `DanhCu.Simulation` | Phase 1 | **none** | Core | Top dynamics, contacts, launch model (PHYSICS_SPEC) |
@@ -134,18 +135,19 @@ Nonla.co.uk/                      (repository root — shared with the website)
 ├── CLAUDE.md                     project rules
 ├── Docs/                         SRS, GDD, TECHNICAL_DESIGN, PHYSICS_SPEC, TEST_PLAN
 ├── Tools/CoreTests/              .NET projects that build + test Core without Unity
+├── Tools/TopModelExport/         exports top geometry to OBJ/JSON (reference renders, DCC templates)
 └── DanhCuVietnam/                Unity project root (open this folder in Unity Hub)
     ├── Packages/manifest.json
     ├── ProjectSettings/          (ProjectVersion.txt committed; rest generated, then committed)
     └── Assets/_Project/
         ├── Art/ (Models, Textures, Materials, Shaders, VFX)
         ├── Audio/ (Music, SFX)
-        ├── Data/ (Tops, TopMaterials, Arenas, GameModes, AI, Physics)   ← SO instances
+        ├── Data/ (Tops, TopShapes, TopMaterials, Arenas, GameModes, AI, Physics)   ← SO instances
         ├── Localization/
         ├── Prefabs/ (Tops, Arenas, UI)
         ├── Resources/DanhCu/GameConfig.asset                            ← only Resources asset
         ├── Scenes/ Bootstrap, MainMenu, Gameplay, Arenas/Arena_SanDinh
-        ├── Scripts/ Core, Data, Input, Runtime, Editor                  ← one folder per assembly
+        ├── Scripts/ Core, Data, Input, Tops, Runtime, Editor            ← one folder per assembly
         ├── Settings/ Rendering (URP assets), Input (.inputactions)
         ├── Tests/ EditMode, PlayMode
         └── UI/
@@ -189,7 +191,8 @@ Everything we author lives under `Assets/_Project/` so third-party assets
 | Asset | Key content |
 |---|---|
 | `GameConfig` (1, in Resources) | Scene names; lists of all modes/tops/arenas/AI profiles; defaults; physics profile; input asset; frame-rate targets. Builds default `MatchSettings` and validates ids |
-| `TopDefinition` | Mass, radius, height, CoM ratio, tip radius/type, max launch RPM, rope wraps, material, prefab, icon. Derives I₃, I₁ and critical spin ω_crit |
+| `TopDefinition` | Shape (`TopData`) + wood + tip label, max launch RPM, rope wraps, prefab, icon. Mass, CoM, I₃, I₁ and ω_crit are integrated from shape + wood |
+| `TopData` | All model dimensions (body, metal tip, rope zone), metal density, tip friction, metal/rope render materials, baked mesh references. See [TOP_MODEL.md](TOP_MODEL.md) |
 | `TopMaterialDefinition` | Wood density, restitution, friction, durability, visual material |
 | `ArenaDefinition` | Scene name, surface type, tip friction, rolling resistance, restitution, unevenness, ring radius |
 | `GameModeDefinition` | Mode type, default ruleset, rounds, time limit, availability |
@@ -221,7 +224,7 @@ non-destructive** — it only creates what is missing:
    `uk.co.nonla.danhcuvietnam` (only if still default), IL2CPP + ARM64 on mobile.
 3. URP: `URP_HighFidelity` and `URP_Mobile` assets + renderers; assigned to
    Graphics settings and to empty quality levels (lower half → Mobile).
-4. Default content: 3 woods, 3 tops, 1 arena, 3 modes, 3 AI tiers, physics profile, `GameConfig`.
+4. Default content: top render materials, 3 woods, 3 top shapes (Small/Medium/Large, meshes baked), `TopModel.prefab`, 3 tops, 1 arena, 3 modes, 3 AI tiers, physics profile, `GameConfig`.
 5. Scenes: Bootstrap, MainMenu, Gameplay, Arenas/Arena_SanDinh; Build Settings with Bootstrap at index 0.
 6. Active Input Handling → Input System (prompts for the required restart).
 

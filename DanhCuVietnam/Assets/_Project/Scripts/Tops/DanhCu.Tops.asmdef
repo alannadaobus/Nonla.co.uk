@@ -1,0 +1,17 @@
+{
+    "name": "DanhCu.Tops",
+    "rootNamespace": "DanhCu.Tops",
+    "references": [
+        "DanhCu.Core",
+        "DanhCu.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

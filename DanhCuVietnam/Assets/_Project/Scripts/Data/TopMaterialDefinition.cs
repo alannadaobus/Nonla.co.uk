@@ -49,5 +49,10 @@ namespace DanhCu.Data
             bodyFriction = newBodyFriction;
             durability = newDurability;
         }
+
+        internal void SetVisualMaterial(Material newVisualMaterial)
+        {
+            visualMaterial = newVisualMaterial;
+        }
     }
 }

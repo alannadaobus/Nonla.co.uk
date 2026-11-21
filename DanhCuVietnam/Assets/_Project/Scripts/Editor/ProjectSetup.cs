@@ -30,6 +30,7 @@ namespace DanhCu.Editor
             return RenderingSetup.IsConfigured()
                 && PlayerSettingsSetup.IsInputSystemActive()
                 && AssetDatabase.LoadAssetAtPath<GameConfig>(ProjectPaths.GameConfig) != null
+                && AssetDatabase.LoadAssetAtPath<GameObject>(ProjectPaths.TopModelPrefab) != null
                 && !SceneFactory.AnyMissing()
                 && BuildSettingsContainAll();
         }

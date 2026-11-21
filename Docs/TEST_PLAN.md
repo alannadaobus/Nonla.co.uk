@@ -47,6 +47,9 @@ In the editor: *Window → General → Test Runner*; *Danh Cu → Setup → Vali
 | ServiceRegistryTests | `Tests/EditMode/Core/ServiceRegistryTests.cs` | Registration rules |
 | MatchSettingsTests | `Tests/EditMode/Core/MatchSettingsTests.cs` | Validation per mode, defensive copies, pause rules — FR-FLOW-4/5 |
 | DataAssetTests | `Tests/EditMode/Data/DataAssetTests.cs` | Project data valid, id format, inertia & critical-spin formulas (PHYSICS_SPEC §3–4), defaults playable — NFR-QUAL-4 |
+| RevolvedMassIntegratorTests | `Tests/EditMode/Core/Tops/RevolvedMassIntegratorTests.cs` | Quadrature vs closed-form cylinder/cone, two materials, step at breakpoint |
+| TopShapeTests | `Tests/EditMode/Core/Tops/TopShapeTests.cs` | Presets valid; profile continuity; tip point on the axis at the pivot; axisymmetry; winding vs normals; no degenerate triangles; rope submesh; hull above tip sphere and < 255 vertices; mesh volume = integrated volume; CoM ordering |
+| TopModelControllerTests | `Tests/EditMode/Tops/TopModelControllerTests.cs` | Rigidbody mass/CoM/inertia from geometry; tip sphere touches pivot; mesh bounds = configured dimensions; children at identity; separate wood/metal materials; invalid shape refused; prefab wired |
 | GameFlowSmokeTests | `Tests/PlayMode/GameFlowSmokeTests.cs` | Full offline flow with real scenes; pause freezes time; max angular speed raised at boot — FR-FLOW-1/4/6 |
 
 ## 4. Physics validation (Phase 1)
@@ -82,6 +85,7 @@ checklist) before its phase exits. The mapping table lives here and grows per ph
 | FR-SPIN-1 (partial) | DataAssetTests.TopDefinition_CriticalSpeed_MatchesStabilityCriterion; GameFlowSmokeTests.Physics_MaxAngularSpeed_IsRaisedAtBoot |
 | NFR-QUAL-1 | CI compile (Core); Unity batch compile (when Unity CI is configured) |
 | NFR-QUAL-3 | `dotnet test Tools/CoreTests/Tests` |
+| FR-CONT-3 (top shapes) | TopShapeTests, TopModelControllerTests, DataAssetTests.TopDefinition_* |
 
 ## 7. Release gates
 

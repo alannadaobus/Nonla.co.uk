@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using DanhCu.Core.Match;
+using DanhCu.Core.Tops;
 using DanhCu.Data;
 using DanhCu.Editor;
 using NUnit.Framework;
@@ -100,28 +101,50 @@ namespace DanhCu.Tests.EditMode.Data
         }
 
         [Test]
-        public void TopDefinition_Inertia_MatchesSolidConeFormula()
+        public void TopDefinition_MassProperties_ComeFromShapeAndWood()
         {
+            TopData shape = CreateShape(TopShapePresets.Medium());
+            var wood = Create<TopMaterialDefinition>();
+            wood.Configure(900f, 0.45f, 0.35f, 0.75f);
             var top = Create<TopDefinition>();
-            top.Configure(Create<TopMaterialDefinition>(), TipType.IronNail, 0.2f, 0.04f, 0.08f, 2000f, default);
+            top.Configure(wood, TipType.IronNail, shape, 2800f, default);
 
-            Assert.That(top.AxialInertia, Is.EqualTo(0.3f * 0.2f * 0.04f * 0.04f).Within(1e-9f));
-            Assert.That(top.MaxLaunchAngularSpeed, Is.EqualTo(2000f * 2f * Mathf.PI / 60f).Within(1e-3f));
+            TopMassProperties expected = RevolvedMassIntegrator.Compute(new TopProfile(shape.ToParameters()), 900, shape.MetalDensity);
+            Assert.That(top.Mass, Is.EqualTo((float)expected.Mass).Within(1e-6f));
+            Assert.That(top.CenterOfMassHeight, Is.EqualTo((float)expected.CenterOfMassHeight).Within(1e-6f));
+            Assert.That(top.AxialInertia, Is.EqualTo((float)expected.AxialInertia).Within(1e-12f));
+            Assert.That(top.Height, Is.EqualTo(shape.TotalHeight));
+            Assert.That(top.MaxLaunchAngularSpeed, Is.EqualTo(2800f * 2f * Mathf.PI / 60f).Within(1e-3f));
         }
 
         [Test]
-        public void TopDefinition_CriticalSpeed_MatchesStabilityCriterion()
+        public void TopDefinition_DenserWood_IsHeavier()
+        {
+            TopData shape = CreateShape(TopShapePresets.Medium());
+            var light = Create<TopMaterialDefinition>();
+            light.Configure(600f, 0.5f, 0.4f, 0.5f);
+            var heavy = Create<TopMaterialDefinition>();
+            heavy.Configure(1050f, 0.4f, 0.3f, 0.9f);
+            var a = Create<TopDefinition>();
+            a.Configure(light, TipType.IronNail, shape, 2800f, default);
+            var b = Create<TopDefinition>();
+            b.Configure(heavy, TipType.IronNail, shape, 2800f, default);
+
+            Assert.That(b.Mass, Is.GreaterThan(a.Mass));
+        }
+
+        [Test]
+        public void TopDefinition_WithoutShape_IsInvalid()
         {
             var top = Create<TopDefinition>();
-            top.Configure(Create<TopMaterialDefinition>(), TipType.IronNail, 0.18f, 0.035f, 0.075f, 2200f, default);
+            top.SetIdentity("no_shape", new LocalizedText("Thử", "Test"));
+            top.Configure(Create<TopMaterialDefinition>(), TipType.IronNail, null, 2800f, default);
 
-            float l = top.CenterOfMassHeight;
-            float i1 = (0.15f * 0.18f * ((0.035f * 0.035f) + (0.25f * 0.075f * 0.075f))) + (0.18f * l * l);
-            float expected = 2f * Mathf.Sqrt(0.18f * 9.81f * l * i1) / top.AxialInertia;
+            var errors = new List<string>();
+            top.Validate(errors);
 
-            Assert.That(top.TransverseInertiaAtTip, Is.EqualTo(i1).Within(1e-9f));
-            Assert.That(top.CriticalAngularSpeed(9.81f), Is.EqualTo(expected).Within(1e-2f));
-            Assert.That(top.CriticalAngularSpeed(9.81f), Is.EqualTo(159f).Within(2f), "PHYSICS_SPEC §4.2 worked example");
+            Assert.That(errors, Has.Some.Contains("shape"));
+            Assert.That(top.Mass, Is.EqualTo(0f));
         }
 
         [Test]
@@ -129,7 +152,7 @@ namespace DanhCu.Tests.EditMode.Data
         {
             var top = Create<TopDefinition>();
             top.SetIdentity("slow_top", new LocalizedText("Chậm", "Slow"));
-            top.Configure(Create<TopMaterialDefinition>(), TipType.IronNail, 0.18f, 0.035f, 0.075f, 800f, default);
+            top.Configure(Create<TopMaterialDefinition>(), TipType.IronNail, CreateShape(TopShapePresets.Medium()), 800f, default);
 
             var errors = new List<string>();
             top.Validate(errors);
@@ -138,10 +161,42 @@ namespace DanhCu.Tests.EditMode.Data
         }
 
         [Test]
+        public void TopData_RoundTripsParameters_AndDetectsMissingBake()
+        {
+            TopShapeParameters large = TopShapePresets.Large();
+            TopData shape = CreateShape(large);
+
+            Assert.That(shape.ToParameters().TotalHeight, Is.EqualTo(large.TotalHeight).Within(1e-6));
+            Assert.That(shape.IsShapeValid, Is.True);
+            Assert.That(shape.HasCurrentBake, Is.False);
+        }
+
+        [Test]
+        public void TopData_InvalidDimensions_AreReported()
+        {
+            TopShapeParameters p = TopShapePresets.Medium();
+            p.CollarDiameter = p.BodyDiameter;
+            TopData shape = CreateShape(p);
+
+            var errors = new List<string>();
+            shape.Validate(errors);
+
+            Assert.That(shape.IsShapeValid, Is.False);
+            Assert.That(errors, Has.Some.Contains("CollarDiameter"));
+        }
+
+        [Test]
         public void PhysicsTuning_Defaults_RaiseMaxAngularSpeedAbovePhysXDefault()
         {
             var physics = Create<PhysicsTuningProfile>();
             Assert.That(physics.MaxAngularSpeed, Is.GreaterThanOrEqualTo(300f));
+        }
+
+        private TopData CreateShape(TopShapeParameters parameters)
+        {
+            var shape = Create<TopData>();
+            shape.SetParameters(parameters);
+            return shape;
         }
 
         private T Create<T>() where T : ScriptableObject

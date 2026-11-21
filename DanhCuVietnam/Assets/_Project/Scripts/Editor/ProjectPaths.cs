@@ -23,6 +23,10 @@ namespace DanhCu.Editor
         public const string InputActions = Root + "/Settings/Input/DanhCuInputActions.inputactions";
 
         public const string Data = Root + "/Data";
+
+        public const string TopMaterials = Root + "/Art/Materials/Tops";
+        public const string TopGeneratedMeshes = Root + "/Art/Models/Tops/Generated";
+        public const string TopModelPrefab = Root + "/Prefabs/Tops/TopModel.prefab";
         public const string GameConfig = Root + "/Resources/DanhCu/GameConfig.asset";
 
         public static readonly string[] Folders =
@@ -36,6 +40,9 @@ namespace DanhCu.Editor
             Root + "/Audio/SFX",
             Data + "/Tops",
             Data + "/TopMaterials",
+            Data + "/TopShapes",
+            TopMaterials,
+            TopGeneratedMeshes,
             Data + "/Arenas",
             Data + "/GameModes",
             Data + "/AI",

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Exports the procedural top geometry (same code Unity uses) to OBJ + JSON, for
+    reference renders, DCC sculpting templates and documentation.
+      dotnet run (project Tools/TopModelExport) with the output directory as argument
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../CoreTests/Core/DanhCu.Core.csproj" />
+  </ItemGroup>
+</Project>
